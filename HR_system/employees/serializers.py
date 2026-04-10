@@ -17,11 +17,31 @@ class EmployeeSerializer(serializers.ModelSerializer):
     # 顯示友善欄位名稱方便前端直接渲染
     department_name = serializers.ReadOnlyField(source='department.name')
     manager_name = serializers.ReadOnlyField(source='manager.name')
+    department_manager_name = serializers.SerializerMethodField()
+    today_clocked_in = serializers.SerializerMethodField()
 
     class Meta:
         model = Employee
         exclude = ['password']
         read_only_fields = ['user']
+
+    def get_department_manager_name(self, obj):
+        if obj.manager and obj.manager.department_id == obj.department_id:
+            return obj.manager.name
+        if not obj.department_id:
+            return ''
+
+        dept_manager = Employee.objects.filter(department_id=obj.department_id, manager__isnull=True).order_by('position_level', 'id').first()
+        return dept_manager.name if dept_manager else ''
+
+    def get_today_clocked_in(self, obj):
+        if not obj.pk:
+            return False
+        latest_today = AttendanceRecord.objects.filter(
+            employee=obj,
+            clock_in__date=timezone.localdate(),
+        ).order_by('-clock_in').first()
+        return bool(latest_today)
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -29,6 +49,12 @@ class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     password_confirm = serializers.CharField(write_only=True)
+    id_number = serializers.CharField(max_length=10, required=False, allow_blank=True)
+    name = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    gender = serializers.ChoiceField(choices=Employee.GENDER_CHOICES, required=False)
+    birthday = serializers.DateField(required=False, allow_null=True)
+    emergency_contact = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    emergency_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
 
     def validate_account(self, value):
         if User.objects.filter(username=value).exists() or Employee.objects.filter(account=value).exists():
@@ -59,6 +85,12 @@ class RegisterSerializer(serializers.Serializer):
             account=account,
             email=email,
             password=user.password,
+            id_number=validated_data.get('id_number', ''),
+            name=validated_data.get('name', ''),
+            gender=validated_data.get('gender', 'O'),
+            birthday=validated_data.get('birthday'),
+            emergency_contact=validated_data.get('emergency_contact', ''),
+            emergency_phone=validated_data.get('emergency_phone', ''),
         )
         return employee
 
@@ -102,6 +134,9 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
 
 
 class OvertimeRecordSerializer(serializers.ModelSerializer):
+    employee_name = serializers.ReadOnlyField(source='employee.name')
+    approved_by_name = serializers.ReadOnlyField(source='approved_by.name')
+
     class Meta:
         model = OvertimeRecord
         fields = '__all__'

@@ -109,6 +109,17 @@ class OvertimeRecord(models.Model):
     hours = models.DecimalField("加班時數", max_digits=5, decimal_places=2)
     reason = models.CharField("加班原因", max_length=255, blank=True, default='')
     status = models.CharField("審核狀態", max_length=20, choices=STATUS_CHOICES, default='pending')
+    requested_at = models.DateTimeField("申請時間", auto_now_add=True)
+    approved_at = models.DateTimeField("核准時間", null=True, blank=True)
+    approved_by = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_overtime_records',
+        verbose_name="核准主管",
+    )
+    auto_approved = models.BooleanField("是否自動核准", default=False)
 
     class Meta:
         ordering = ['-work_date']
