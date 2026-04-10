@@ -1,0 +1,23 @@
+# Python / Django
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.sqlite3
+
+# Django local artifacts
+HR_system/db.sqlite3
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
