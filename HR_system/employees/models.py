@@ -47,6 +47,10 @@ class Employee(models.Model):
     # 3. 合約資訊
     hire_date = models.DateField("到職日", null=True, blank=True)
     resignation_date = models.DateField("離職日", null=True, blank=True)
+    class Meta:
+        # 定義 Model 本身在後台顯示的單數與複數名稱
+        verbose_name = "員工資料"
+        verbose_name_plural = "員工資料"
 
     def __str__(self):
         return f"{self.employee_id} - {self.name}"

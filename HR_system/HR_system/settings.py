@@ -140,5 +140,11 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
+
+EMPLOYEE_EDITOR_GROUPS = [
+    '人資群組',
+    '工程主管',
+]
+
 # 或者開發期間為了方便可以暫時允許所有來源 (上線不建議)
 # CORS_ALLOW_ALL_ORIGINS = True

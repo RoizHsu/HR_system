@@ -1,9 +1,32 @@
 # employees/serializers.py
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 from .models import AttendanceRecord, Department, Employee, LeaveRequest, OvertimeRecord, ShiftSchedule
+
+
+def can_manage_employee_data(user):
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    editor_groups = set(getattr(settings, 'EMPLOYEE_EDITOR_GROUPS', ['人資群組', '工程主管']))
+    return user.groups.filter(name__in=editor_groups).exists()
+
+
+def resolve_permission_user(serializer_context, employee_obj):
+    # Login/Register flow has token-only auth and request.user may still be AnonymousUser.
+    explicit_user = serializer_context.get('auth_user')
+    if explicit_user:
+        return explicit_user
+
+    request = serializer_context.get('request')
+    if request and getattr(request, 'user', None) and request.user.is_authenticated:
+        return request.user
+
+    return getattr(employee_obj, 'user', None)
 
 class DepartmentSerializer(serializers.ModelSerializer):
     parent_name = serializers.ReadOnlyField(source='parent.name')
@@ -19,6 +42,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     manager_name = serializers.ReadOnlyField(source='manager.name')
     department_manager_name = serializers.SerializerMethodField()
     today_clocked_in = serializers.SerializerMethodField()
+    can_manage_employee_data = serializers.SerializerMethodField()
 
     class Meta:
         model = Employee
@@ -42,6 +66,10 @@ class EmployeeSerializer(serializers.ModelSerializer):
             clock_in__date=timezone.localdate(),
         ).order_by('-clock_in').first()
         return bool(latest_today)
+
+    def get_can_manage_employee_data(self, obj):
+        user = resolve_permission_user(self.context, obj)
+        return can_manage_employee_data(user)
 
 
 class RegisterSerializer(serializers.Serializer):

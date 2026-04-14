@@ -1,5 +1,6 @@
 # employees/views.py
 from django.contrib.auth import authenticate
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.authentication import TokenAuthentication
@@ -27,6 +28,18 @@ def get_current_employee(request):
     return Employee.objects.filter(user=request.user).first()
 
 
+def get_employee_editor_groups():
+    return set(getattr(settings, 'EMPLOYEE_EDITOR_GROUPS', ['人資群組', '工程主管']))
+
+
+def can_manage_employee_data(user):
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    return user.groups.filter(name__in=get_employee_editor_groups()).exists()
+
+
 def auto_approve_overtimes(queryset):
     threshold = timezone.now() - timedelta(hours=12)
     pending_records = queryset.filter(status='pending', requested_at__lte=threshold)
@@ -39,23 +52,120 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Employee.objects.all()
     serializer_class = EmployeeSerializer
+    editor_editable_fields = {
+        'employee_id',
+        'account',
+        'email',
+        'name',
+        'gender',
+        'birthday',
+        'id_number',
+        'phone',
+        'address',
+        'emergency_contact',
+        'emergency_phone',
+        'department',
+        'job_title',
+        'manager',
+        'emp_type',
+        'status',
+        'position_level',
+        'hire_date',
+        'resignation_date',
+    }
+
+    def get_queryset(self):
+        if can_manage_employee_data(self.request.user):
+            return Employee.objects.all()
+
+        employee = get_current_employee(self.request)
+        if not employee:
+            return Employee.objects.none()
+        return Employee.objects.filter(pk=employee.pk)
+
+    def _validate_editor_update_fields(self, request):
+        disallowed = [field for field in request.data.keys() if field not in self.editor_editable_fields]
+        if disallowed:
+            return Response(
+                {
+                    'detail': '包含無法修改的欄位。',
+                    'disallowed_fields': disallowed,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return None
+
+    def _ensure_editor_permission(self, request):
+        if can_manage_employee_data(request.user):
+            return None
+        return Response({'detail': '你沒有權限修改員工資料。'}, status=status.HTTP_403_FORBIDDEN)
+
+    def create(self, request, *args, **kwargs):
+        denied = self._ensure_editor_permission(request)
+        if denied:
+            return denied
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        denied = self._ensure_editor_permission(request)
+        if denied:
+            return denied
+
+        invalid_fields = self._validate_editor_update_fields(request)
+        if invalid_fields:
+            return invalid_fields
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        denied = self._ensure_editor_permission(request)
+        if denied:
+            return denied
+
+        invalid_fields = self._validate_editor_update_fields(request)
+        if invalid_fields:
+            return invalid_fields
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        denied = self._ensure_editor_permission(request)
+        if denied:
+            return denied
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=False, methods=['get'], url_path='me')
     def me(self, request):
         employee = get_current_employee(request)
         if not employee:
             return Response({'detail': '找不到對應員工資料'}, status=status.HTTP_404_NOT_FOUND)
-        return Response(EmployeeSerializer(employee).data)
+        return Response(EmployeeSerializer(employee, context={'request': request}).data)
 
     @action(detail=False, methods=['patch'], url_path='me/update')
     def update_me(self, request):
         employee = get_current_employee(request)
         if not employee:
             return Response({'detail': '找不到對應員工資料'}, status=status.HTTP_404_NOT_FOUND)
-        serializer = EmployeeSerializer(employee, data=request.data, partial=True)
+
+        denied = self._ensure_editor_permission(request)
+        if denied:
+            return denied
+
+        invalid_fields = self._validate_editor_update_fields(request)
+        if invalid_fields:
+            return invalid_fields
+
+        serializer = EmployeeSerializer(employee, data=request.data, partial=True, context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='company-edit-access')
+    def company_edit_access(self, request):
+        return Response(
+            {
+                'can_manage_employee_data': can_manage_employee_data(request.user),
+                'allowed_groups': sorted(list(get_employee_editor_groups())),
+            }
+        )
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
@@ -76,7 +186,7 @@ class RegisterAPIView(APIView):
         return Response(
             {
                 'token': token.key,
-                'employee': EmployeeSerializer(employee).data,
+                'employee': EmployeeSerializer(employee, context={'request': request, 'auth_user': employee.user}).data,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -104,7 +214,7 @@ class LoginAPIView(APIView):
         return Response(
             {
                 'token': token.key,
-                'employee': EmployeeSerializer(employee).data,
+                'employee': EmployeeSerializer(employee, context={'request': request, 'auth_user': user}).data,
             }
         )
 
@@ -296,3 +406,4 @@ class OrgChartAPIView(APIView):
         departments = Department.objects.all().order_by('name')
         serializer = OrgChartNodeSerializer(departments, many=True)
         return Response({'departments': serializer.data})
+
