@@ -1,10 +1,33 @@
 ## 後端django
-<img width="650" height="363" alt="{363F2A73-1106-46ED-882E-D7A85C5B463D}" src="https://github.com/user-attachments/assets/9a81d4ed-574a-44ce-8b05-5f2debc50330" />
+
+<img width="301" height="522" alt="image" src="https://github.com/user-attachments/assets/834fae2d-ed8e-43f5-80c6-2f7965686e92" />
+更新20260410
 
 ---
 ## 前端vue
-<img width="1876" height="268" alt="{C9475535-1541-4365-A3CA-96486F162ED1}" src="https://github.com/user-attachments/assets/1c3f367c-7c61-47c5-846d-ebe72a89c389" />
+### 登入
+<img width="649" height="333" alt="image" src="https://github.com/user-attachments/assets/dc7b8ff3-cdd4-4c6c-85b3-7c7bc8821b5b" />
+
+
+### 註冊
+<img width="627" height="753" alt="image" src="https://github.com/user-attachments/assets/eb69e9c0-dd4f-47d9-a865-697e47f6fa4b" />
+
+
+### 網頁
+<img width="1276" height="358" alt="image" src="https://github.com/user-attachments/assets/fc00ceef-8e8c-4ac7-aa6c-63dbbe0ec003" />
+
+
+### 打卡紀錄
+<img width="1317" height="266" alt="image" src="https://github.com/user-attachments/assets/61392643-4f55-4c2b-b8d9-477ac4e816e5" />
+
+
+### 加班紀錄
+<img width="1225" height="398" alt="image" src="https://github.com/user-attachments/assets/df5a1e67-bceb-4589-a207-c0a24aee2716" />
+
+
+### 修改資料
+<img width="1295" height="712" alt="螢幕擷取畫面 2026-04-10 110536" src="https://github.com/user-attachments/assets/b78557c5-cf40-4fee-89a3-1e88f9d5a6b9" />
+
 
 ---
-## 新增資料至SQL且顯示在前端是否在職或離職
-<img width="774" height="789" alt="{BE39741B-CB2F-41BE-9200-8E03F18F84F9}" src="https://github.com/user-attachments/assets/00fad924-03d7-45db-99f8-744d2bdd35b7" />
+
