@@ -6,23 +6,18 @@
       <p class="lead">這裡是公開首頁。登入後，系統會顯示你的個人資料、打卡、請假與加班區塊。</p>
 
       <div class="action-row">
-        <router-link to="/login" class="primary-link">前往登入 / 註冊</router-link>
+        <router-link v-if="!isLoggedIn" to="/login" class="primary-link">前往登入 / 註冊</router-link>
+        <el-button v-else type="danger" plain class="primary-link" @click="logout">登出</el-button>
         <router-link v-if="isHrEmployee" to="/dashboard" class="secondary-link">進入 HR 後台</router-link>
-      </div>
-
-      <div v-if="isLoggedIn" class="status-card">
-        <strong>目前已登入：</strong>
-        <span>{{ employeeName }}</span>
       </div>
     </section>
 
-    <section v-if="isAuthenticated" class="portal-card">
+    <section v-if="isLoggedIn" class="portal-card">
       <div class="portal-header">
         <div>
           <h2>歡迎，{{ employee?.name || employee?.account }}</h2>
           <p>{{ employee?.employee_id }} | {{ employee?.department_name || '未指派部門' }}</p>
         </div>
-        <el-button type="danger" plain @click="logout">登出</el-button>
       </div>
 
       <el-tabs v-model="activeTab">
@@ -254,6 +249,9 @@ onMounted(async () => {
 .home-page {
   min-height: 100vh;
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
@@ -261,15 +259,15 @@ onMounted(async () => {
 .portal-card {
   width: 100%;
   max-width: 1200px;
-  margin: 0 auto 24px;
-  padding: 40px;
+  margin: 0 auto;
+  padding: 32px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
 }
 
 .portal-card {
-  padding: 28px;
+  padding: 28px 32px 32px;
 }
 
 .eyebrow {

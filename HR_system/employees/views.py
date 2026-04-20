@@ -41,7 +41,7 @@ def can_manage_employee_data(user):
 
 
 def auto_approve_overtimes(queryset):
-    threshold = timezone.now() - timedelta(hours=12)
+    threshold = timezone.now() - timedelta(hours=24)
     pending_records = queryset.filter(status='pending', requested_at__lte=threshold)
     if pending_records.exists():
         pending_records.update(status='approved', auto_approved=True, approved_at=timezone.now())
