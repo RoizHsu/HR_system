@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashView.vue'
+import PersonalDashboard from '../views/PersonalDashboard.vue'
 
 const routes = [
   {
@@ -13,6 +14,12 @@ const routes = [
     path: '/login',
     name: 'login',
     component: LoginView
+  },
+  {
+    path: '/personal',
+    name: 'personal',
+    component: PersonalDashboard,
+    meta: { requiresAuth: false }  // 需要登入才能訪問個人資料頁面
   },
   {
     path: '/dashboard',

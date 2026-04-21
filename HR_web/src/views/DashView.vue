@@ -35,7 +35,8 @@
 						<el-alert :title="attendanceToday.has_clock_in ? (attendanceToday.clocked_out ? '今日已完成上下班打卡' : '今日已打卡上班，尚未下班打卡') : '今日尚未打卡'" type="info" :closable="false" show-icon />
 						<div class="clock-buttons">
 							<el-button type="primary" :disabled="attendanceToday.has_clock_in && !attendanceToday.clocked_out" @click="clockIn">上班打卡</el-button>
-							<el-button type="success" :disabled="!attendanceToday.has_clock_in || attendanceToday.clocked_out" @click="clockOut">下班打卡</el-button>
+   							<el-button type="success" :disabled="!attendanceToday.has_clock_in || attendanceToday.clocked_out" @click="clockOut()">下班打卡</el-button>
+                  			<el-button type="warning" :disabled="!attendanceToday.has_clock_in || attendanceToday.clocked_out" @click="showEarlyLeaveDialog">提早下班</el-button>
 						</div>
 					</div>
 					<el-table :data="attendanceRecords">
@@ -43,6 +44,28 @@
 						<el-table-column prop="clock_out" label="下班打卡" />
 						<el-table-column prop="note" label="備註" />
 					</el-table>
+
+					<!-- 提早下班備註 Dialog -->
+					<el-dialog v-model="earlyLeaveDialogVisible" title="提早下班申請" width="500px" @close="noteInput = ''">
+						<div style="padding: 20px 0;">
+							<p style="margin-bottom: 20px; color: #333;">
+								請說明提早下班的原因：
+							</p>
+							<el-input
+								v-model="noteInput"
+								type="textarea"
+								rows="4"
+								placeholder="例：身體不適、家中有急事、其他..."
+								clearable
+							/>
+						</div>
+						<template #footer>
+							<span>
+								<el-button @click="earlyLeaveDialogVisible = false">取消</el-button>
+								<el-button type="primary" @click="submitEarlyLeave">確認下班</el-button>
+							</span>
+						</template>
+					</el-dialog>
 				</el-tab-pane>
 
 				<el-tab-pane label="排班資訊" name="shifts">
@@ -55,13 +78,69 @@
 				</el-tab-pane>
 
 				<el-tab-pane label="休假管理" name="leaves">
-					<el-table :data="leaveRequests">
-						<el-table-column prop="leave_type" label="假別" />
-						<el-table-column prop="start_date" label="起始日" />
-						<el-table-column prop="end_date" label="結束日" />
-						<el-table-column prop="status" label="狀態" />
-						<el-table-column prop="reason" label="原因" />
-					</el-table>
+				<div class="section-actions">
+					<div class="clock-buttons">
+						<el-button type="primary" @click="showLeaveDialog">新增請假</el-button>
+					</div>
+				</div>
+				<el-table :data="leaveRequests">
+					<el-table-column prop="leave_type" label="假別" />
+					<el-table-column prop="start_date" label="起始日" />
+					<el-table-column prop="end_date" label="結束日" />
+					<el-table-column prop="status" label="狀態" />
+					<el-table-column prop="reason" label="原因" />
+				</el-table>
+
+				<!-- 新增請假 Dialog -->
+				<el-dialog v-model="leaveRequestDialogVisible" title="新增請假申請" width="600px" @close="leaveForm = { leave_type: '', start_date: null, end_date: null, reason: '' }">
+					<el-form :model="leaveForm" label-width="100px" style="padding: 0 20px;">
+						<!-- 假別選擇 -->
+						<el-form-item label="假別">
+							<el-select v-model="leaveForm.leave_type" placeholder="請選擇假別">
+								<el-option v-for="option in leaveTypeOptions" :key="option.value" :label="option.label" :value="option.value" />
+							</el-select>
+						</el-form-item>
+
+						<!-- 起始日 -->
+						<el-form-item label="起始日">
+							<el-date-picker
+								v-model="leaveForm.start_date"
+								type="date"
+								placeholder="選擇起始日期"
+								value-format="YYYY-MM-DD"
+							/>
+						</el-form-item>
+
+						<!-- 結束日 -->
+						<el-form-item label="結束日">
+							<el-date-picker
+								v-model="leaveForm.end_date"
+								type="date"
+								placeholder="選擇結束日期"
+								value-format="YYYY-MM-DD"
+							/>
+						</el-form-item>
+
+						<!-- 原因 -->
+						<el-form-item label="請假原因">
+							<el-input
+								v-model="leaveForm.reason"
+								type="textarea"
+								rows="4"
+								placeholder="請填寫請假原因"
+								maxlength="255"
+								show-word-limit
+							/>
+						</el-form-item>
+					</el-form>
+
+					<template #footer>
+						<span>
+							<el-button @click="leaveRequestDialogVisible = false">取消</el-button>
+							<el-button type="primary" @click="handleSubmitLeaveRequest">提交申請</el-button>
+						</span>
+					</template>
+				</el-dialog>
 				</el-tab-pane>
 
 				<el-tab-pane label="加班紀錄" name="overtimes">
@@ -297,8 +376,49 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import api, { setAuthToken } from '../api'
+import { useAttendance } from '../composables/useAttendance'
+import { useLeaveRequest } from '../composables/useLeaveRequest'
+import { useOvertime } from '../composables/useOvertime'
+import { useManagerOversight } from '../composables/useManagerOversight'
 
 const router = useRouter()
+
+// 使用 Composables 導入共享邏輯
+const {
+	attendanceRecords,
+	attendanceToday,
+	earlyLeaveDialogVisible,
+	noteInput,
+	clockIn,
+	clockOut,
+	showEarlyLeaveDialog,
+	submitEarlyLeave,
+	loadAttendanceData
+} = useAttendance()
+
+const {
+	leaveRequests,
+	leaveRequestDialogVisible,
+	leaveForm,
+	leaveTypeOptions,
+	showLeaveDialog,
+	submitLeaveRequest,
+	loadLeaveData
+} = useLeaveRequest()
+
+const {
+	overtimeRecords,
+	overtimeApplyForm,
+	submitOvertime,
+	loadOvertimeData
+} = useOvertime()
+
+const {
+	managerPendingOvertimes,
+	approveOvertime,
+	rejectOvertime,
+	loadManagerPendingOvertimes
+} = useManagerOversight()
 
 const pageLoading = ref(false)
 const companyEditSaving = ref(false)
@@ -310,19 +430,8 @@ const allEmployees = ref([])
 const selectedCompanyEmployeeId = ref(null)
 const selectedCompanyDepartmentId = ref(null)
 
-const attendanceRecords = ref([])
-const attendanceToday = ref({ has_clock_in: false, clocked_out: false, record: null })
 const shiftSchedules = ref([])
-const leaveRequests = ref([])
-const overtimeRecords = ref([])
-const managerPendingOvertimes = ref([])
 const orgDepartments = ref([])
-
-const overtimeApplyForm = ref({
-	work_date: null,
-	hours: 1,
-	reason: ''
-})
 
 const profileForm = ref({
 	employee_id: '',
@@ -385,6 +494,13 @@ const departmentDisplay = computed(() => {
 
 const todayClockedInText = computed(() => (attendanceToday.value.has_clock_in ? '是' : '否'))
 
+const hoursWorked = computed(() => {
+	if (!attendanceToday.value.record?.clock_in) return 0
+	const clockInTime = new Date(attendanceToday.value.record.clock_in)
+	const now = new Date()
+	return (now - clockInTime) / (1000 * 60 * 60)
+})
+
 const parseError = (err, fallbackMessage) => {
 	const data = err.response?.data
 	if (!data) return fallbackMessage
@@ -426,27 +542,28 @@ const applyEmployeeToForm = (data) => {
 const loadDashboardData = async () => {
 	pageLoading.value = true
 	try {
-		const [attendanceRes, attendanceTodayRes, shiftsRes, leavesRes, overtimeRes, managerPendingRes, orgRes, deptRes, employeesRes] = await Promise.all([
-			api.get('employees/attendance/'),
-			api.get('employees/attendance/today-status/'),
+		// 加載共享數據（打卡、請假、加班）
+		await Promise.all([
+			loadAttendanceData(),
+			loadLeaveData(),
+			loadOvertimeData()
+		])
+
+		// 加載 HR 特有數據
+		const [shiftsRes, orgRes, deptRes, employeesRes] = await Promise.all([
 			api.get('employees/shifts/'),
-			api.get('employees/leaves/'),
-			api.get('employees/overtimes/'),
-			api.get('employees/overtimes/pending-approvals/'),
 			api.get('employees/org-chart/'),
 			api.get('employees/departments/'),
 			api.get('employees/list/')
 		])
 
-		attendanceRecords.value = attendanceRes.data
-		attendanceToday.value = attendanceTodayRes.data
 		shiftSchedules.value = shiftsRes.data
-		leaveRequests.value = leavesRes.data
-		overtimeRecords.value = overtimeRes.data
-		managerPendingOvertimes.value = managerPendingRes.data
 		orgDepartments.value = orgRes.data.departments || []
 		departments.value = deptRes.data
 		allEmployees.value = employeesRes.data
+
+		// 加載主管審核數據
+		await loadManagerPendingOvertimes()
 
 		if (canManageEmployeeData.value) {
 			if (!selectedCompanyEmployeeId.value && allEmployees.value.length > 0) {
@@ -486,63 +603,11 @@ const onCompanyEmployeeChange = () => {
 	applyEmployeeToForm(selected)
 }
 
-const clockIn = async () => {
-	try {
-		await api.post('employees/attendance/clock-in/')
-		ElMessage.success('上班打卡成功')
+// 提交請假申請（呼叫composable後重新加載）
+const handleSubmitLeaveRequest = async () => {
+	const success = await submitLeaveRequest()
+	if (success) {
 		await loadDashboardData()
-	} catch (err) {
-		ElMessage.error(parseError(err, '打卡失敗'))
-	}
-}
-
-const clockOut = async () => {
-	try {
-		await api.post('employees/attendance/clock-out/')
-		ElMessage.success('下班打卡成功')
-		await loadDashboardData()
-	} catch (err) {
-		ElMessage.error(parseError(err, '打卡失敗'))
-	}
-}
-
-const submitOvertime = async () => {
-	if (!overtimeApplyForm.value.work_date || !overtimeApplyForm.value.hours) {
-		ElMessage.error('請完整填寫加班日期與時數')
-		return
-	}
-
-	try {
-		await api.post('employees/overtimes/', overtimeApplyForm.value)
-		overtimeApplyForm.value = {
-			work_date: null,
-			hours: 1,
-			reason: ''
-		}
-		ElMessage.success('加班申請已送出')
-		await loadDashboardData()
-	} catch (err) {
-		ElMessage.error(parseError(err, '送出加班申請失敗'))
-	}
-}
-
-const approveOvertime = async (id) => {
-	try {
-		await api.post(`employees/overtimes/${id}/approve/`)
-		ElMessage.success('已核准加班申請')
-		await loadDashboardData()
-	} catch (err) {
-		ElMessage.error(parseError(err, '核准失敗'))
-	}
-}
-
-const rejectOvertime = async (id) => {
-	try {
-		await api.post(`employees/overtimes/${id}/reject/`)
-		ElMessage.success('已拒絕加班申請')
-		await loadDashboardData()
-	} catch (err) {
-		ElMessage.error(parseError(err, '拒絕失敗'))
 	}
 }
 
@@ -603,12 +668,10 @@ const logout = async () => {
 	employee.value = null
 	selectedCompanyEmployeeId.value = null
 	selectedCompanyDepartmentId.value = null
-	attendanceRecords.value = []
-	shiftSchedules.value = []
-	leaveRequests.value = []
-	overtimeRecords.value = []
-	managerPendingOvertimes.value = []
-	orgDepartments.value = []
+	activeTab.value = 'overview'
+	pageLoading.value = false
+	companyEditSaving.value = false
+	// 注：不直接清除composable的refs，讓它們在下次掛載時自動初始化
 	router.push('/')
 	ElMessage.success('已登出')
 }

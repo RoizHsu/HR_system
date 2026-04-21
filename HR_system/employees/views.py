@@ -324,8 +324,23 @@ class AttendanceRecordViewSet(BaseSelfServiceViewSet):
         if not opened_record:
             return Response({'detail': '今天尚未打卡上班，無法打卡下班。'}, status=status.HTTP_400_BAD_REQUEST)
 
-        opened_record.clock_out = timezone.now()
-        opened_record.save(update_fields=['clock_out'])
+        # 計算工時（小時數）
+        now = timezone.now()
+        hours_worked = (now - opened_record.clock_in).total_seconds() / 3600
+        
+        # 檢查是否達到 8 小時
+        if hours_worked < 8:
+            # 未滿 8 小時，需要備註
+            note = request.data.get('note', '').strip()
+            if not note:
+                return Response(
+                    {'detail': '未滿 8 小時工作，必須提供下班備註。'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            opened_record.note = note
+        
+        opened_record.clock_out = now
+        opened_record.save()
         return Response(AttendanceRecordSerializer(opened_record).data)
 
 

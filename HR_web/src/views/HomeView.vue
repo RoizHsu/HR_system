@@ -1,109 +1,90 @@
 <template>
   <div class="home-page">
-    <section class="hero-card">
-      <p class="eyebrow">HR System Portal</p>
-      <h1>員工入口首頁</h1>
-      <p class="lead">這裡是公開首頁。登入後，系統會顯示你的個人資料、打卡、請假與加班區塊。</p>
-
-      <div class="action-row">
-        <router-link v-if="!isLoggedIn" to="/login" class="primary-link">前往登入 / 註冊</router-link>
-        <el-button v-else type="danger" plain class="primary-link" @click="logout">登出</el-button>
-        <router-link v-if="isHrEmployee" to="/dashboard" class="secondary-link">進入 HR 後台</router-link>
+    <!-- 頂部導航 -->
+    <header class="navbar">
+      <div class="navbar-left">
+        <button class="menu-toggle" @click="showMenu = !showMenu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <h1 class="logo">HR System</h1>
       </div>
-    </section>
+      <div class="navbar-right">
+        <div v-if="!isLoggedIn" class="auth-menu">
+          <router-link to="/login" class="nav-link">歡迎登入/註冊</router-link>
+        </div>
+        <div v-else class="user-menu">
+          <span class="welcome-text">歡迎，{{ employee?.name || employee?.account }}</span>
+          
+          <!-- 菜單按鈕 -->
+          <button class="menu-icon-btn" @click="showMenuDropdown = !showMenuDropdown">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
 
-    <section v-if="isLoggedIn" class="portal-card">
-      <div class="portal-header">
-        <div>
-          <h2>歡迎，{{ employee?.name || employee?.account }}</h2>
-          <p>{{ employee?.employee_id }} | {{ employee?.department_name || '未指派部門' }}</p>
+          <!-- 下拉菜單 -->
+          <nav v-if="showMenuDropdown" class="dropdown-menu">
+            <router-link to="/" @click="showMenuDropdown = false" class="dropdown-link">
+              <span class="icon">🏠</span>
+              回首頁
+            </router-link>
+            <router-link to="/personal" @click="showMenuDropdown = false" class="dropdown-link">
+              <span class="icon">👤</span>
+              個人資料
+            </router-link>
+            <div class="dropdown-divider"></div>
+            <button @click="logout" class="dropdown-link logout-link">
+              <span class="icon">🚪</span>
+              登出
+            </button>
+          </nav>
         </div>
       </div>
+    </header>
 
-      <el-tabs v-model="activeTab">
-        <el-tab-pane label="個人資訊" name="overview">
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="員工編號">{{ employee?.employee_id || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="姓名">{{ employee?.name || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="性別">{{ employee?.gender === 'M' ? '男' : employee?.gender === 'F' ? '女' : '其他' }}</el-descriptions-item>
-            <el-descriptions-item label="身分證字號">{{ employee?.id_number || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="部門">{{ departmentDisplay }}</el-descriptions-item>
-            <el-descriptions-item label="今日打卡">{{ todayClockedInText }}</el-descriptions-item>
-          </el-descriptions>
-          <el-alert
-            class="info-tip"
-            :title="canManageEmployeeData ? '你是 HR 人員，可以進入後台管理' : '你目前是一般員工，這裡是你的個人主頁'"
-            :type="canManageEmployeeData ? 'success' : 'info'"
-            :closable="false"
-            show-icon
-          />
-        </el-tab-pane>
+    <!-- 主容器 -->
+    <div class="main-content">
+      <!-- 英雄區段 -->
+      <section class="hero">
+        <div class="hero-content">
+          <p class="eyebrow">HR System Portal</p>
+          <h2>首頁</h2>
+          <p class="lead">歡迎XX股份有限公司</p>
+          <p v-if="!isLoggedIn" class="subtext">請登入以查看你的個人資料、打卡記錄、排班、休假和加班資訊。</p>
+          <p v-else class="subtext">登入成功！請前往個人資料查看你的工作相關資訊。</p>
+        </div>
+      </section>
 
-        <el-tab-pane label="打卡資訊" name="attendance">
-          <div class="section-actions">
-            <el-alert
-              :title="attendanceToday.has_clock_in ? (attendanceToday.clocked_out ? '今日已完成上下班打卡' : '今日已打卡上班，尚未下班打卡') : '今日尚未打卡'"
-              type="info"
-              :closable="false"
-              show-icon
-            />
-            <div class="clock-buttons">
-              <el-button type="primary" :disabled="attendanceToday.has_clock_in && !attendanceToday.clocked_out" @click="clockIn">上班打卡</el-button>
-              <el-button type="success" :disabled="!attendanceToday.has_clock_in || attendanceToday.clocked_out" @click="clockOut">下班打卡</el-button>
-            </div>
+      <!-- 功能介紹卡片 -->
+      <section class="features">
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">🕐</div>
+            <h3>穩定</h3>
+            <p>快速打卡上班、下班，查看歷史記錄</p>
           </div>
-
-          <el-table :data="attendanceRecords">
-            <el-table-column prop="clock_in" label="上班打卡" />
-            <el-table-column prop="clock_out" label="下班打卡" />
-            <el-table-column prop="note" label="備註" />
-          </el-table>
-        </el-tab-pane>
-
-        <el-tab-pane label="排班資訊" name="shifts">
-          <el-table :data="shiftSchedules">
-            <el-table-column prop="shift_date" label="日期" />
-            <el-table-column prop="start_time" label="上班" />
-            <el-table-column prop="end_time" label="下班" />
-            <el-table-column prop="shift_type" label="班別" />
-          </el-table>
-        </el-tab-pane>
-
-        <el-tab-pane label="休假管理" name="leaves">
-          <el-table :data="leaveRequests">
-            <el-table-column prop="leave_type" label="假別" />
-            <el-table-column prop="start_date" label="起始日" />
-            <el-table-column prop="end_date" label="結束日" />
-            <el-table-column prop="status" label="狀態" />
-            <el-table-column prop="reason" label="原因" />
-          </el-table>
-        </el-tab-pane>
-
-        <el-tab-pane label="加班紀錄" name="overtimes">
-          <el-card class="inner-card" shadow="never">
-            <template #header>提出加班申請</template>
-            <el-form :inline="true" :model="overtimeApplyForm" class="overtime-form">
-              <el-form-item label="日期"><el-date-picker v-model="overtimeApplyForm.work_date" type="date" value-format="YYYY-MM-DD" /></el-form-item>
-              <el-form-item label="時數"><el-input-number v-model="overtimeApplyForm.hours" :min="0.5" :step="0.5" /></el-form-item>
-              <el-form-item label="原因"><el-input v-model="overtimeApplyForm.reason" placeholder="輸入加班原因" style="width: 280px" /></el-form-item>
-              <el-form-item><el-button type="primary" @click="submitOvertime">送出申請</el-button></el-form-item>
-            </el-form>
-            <p class="hint-text">主管若 12 小時內未處理，系統將自動核准。</p>
-          </el-card>
-
-          <el-table :data="overtimeRecords">
-            <el-table-column prop="work_date" label="日期" />
-            <el-table-column prop="hours" label="時數" />
-            <el-table-column prop="status" label="狀態" />
-            <el-table-column prop="auto_approved" label="自動核准">
-              <template #default="scope">{{ scope.row.auto_approved ? '是' : '否' }}</template>
-            </el-table-column>
-            <el-table-column prop="approved_by_name" label="核准主管" />
-            <el-table-column prop="reason" label="原因" />
-          </el-table>
-        </el-tab-pane>
-      </el-tabs>
-    </section>
+          <div class="feature-card">
+            <div class="feature-icon">📋</div>
+            <h3>堅持</h3>
+            <p>查看你的班次安排和時間表</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🏖️</div>
+            <h3>服務</h3>
+            <p>提交和追蹤你的假期申請</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">⚡</div>
+            <h3>效率</h3>
+            <p>申請加班，主管 12 小時內自動核准</p>
+          </div>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -115,102 +96,17 @@ import api, { setAuthToken } from '../api'
 
 const router = useRouter()
 
-const activeTab = ref('overview')
 const employee = ref(null)
-const attendanceRecords = ref([])
-const attendanceToday = ref({ has_clock_in: false, clocked_out: false, record: null })
-const shiftSchedules = ref([])
-const leaveRequests = ref([])
-const overtimeRecords = ref([])
-
-const overtimeApplyForm = ref({
-  work_date: null,
-  hours: 1,
-  reason: ''
-})
+const showMenu = ref(false)
+const showMenuDropdown = ref(false)
 
 const isLoggedIn = computed(() => !!employee.value)
-const canManageEmployeeData = computed(() => !!employee.value?.can_manage_employee_data)
 const isHrEmployee = computed(() => !!employee.value?.can_manage_employee_data)
-
-const departmentDisplay = computed(() => {
-  if (!employee.value?.department_name) return '未指派部門'
-  const manager = employee.value.department_manager_name || employee.value.manager_name || '未設定'
-  return `${employee.value.department_name}（主管：${manager}）`
-})
-
-const todayClockedInText = computed(() => (attendanceToday.value.has_clock_in ? '是' : '否'))
-const employeeName = computed(() => employee.value?.name || employee.value?.account || '未知使用者')
-
-const parseError = (err, fallbackMessage) => {
-  const data = err.response?.data
-  if (!data) return fallbackMessage
-  if (typeof data === 'string') return data
-  if (data.detail) return data.detail
-
-  const messages = Object.entries(data).map(([key, value]) => {
-    if (Array.isArray(value)) return `${key}: ${value[0]}`
-    return `${key}: ${value}`
-  })
-  return messages.length ? messages.join('; ') : fallbackMessage
-}
-
-const loadPortalData = async () => {
-  const [attendanceRes, attendanceTodayRes, shiftsRes, leavesRes, overtimeRes] = await Promise.all([
-    api.get('employees/attendance/'),
-    api.get('employees/attendance/today-status/'),
-    api.get('employees/shifts/'),
-    api.get('employees/leaves/'),
-    api.get('employees/overtimes/')
-  ])
-
-  attendanceRecords.value = attendanceRes.data
-  attendanceToday.value = attendanceTodayRes.data
-  shiftSchedules.value = shiftsRes.data
-  leaveRequests.value = leavesRes.data
-  overtimeRecords.value = overtimeRes.data
-}
 
 const loadCurrentEmployee = async () => {
   const res = await api.get('employees/list/me/')
   employee.value = res.data
   localStorage.setItem('hr_employee', JSON.stringify(res.data))
-}
-
-const clockIn = async () => {
-  try {
-    await api.post('employees/attendance/clock-in/')
-    ElMessage.success('上班打卡成功')
-    await loadPortalData()
-  } catch (err) {
-    ElMessage.error(parseError(err, '打卡失敗'))
-  }
-}
-
-const clockOut = async () => {
-  try {
-    await api.post('employees/attendance/clock-out/')
-    ElMessage.success('下班打卡成功')
-    await loadPortalData()
-  } catch (err) {
-    ElMessage.error(parseError(err, '打卡失敗'))
-  }
-}
-
-const submitOvertime = async () => {
-  if (!overtimeApplyForm.value.work_date || !overtimeApplyForm.value.hours) {
-    ElMessage.error('請完整填寫加班日期與時數')
-    return
-  }
-
-  try {
-    await api.post('employees/overtimes/', overtimeApplyForm.value)
-    overtimeApplyForm.value = { work_date: null, hours: 1, reason: '' }
-    ElMessage.success('加班申請已送出')
-    await loadPortalData()
-  } catch (err) {
-    ElMessage.error(parseError(err, '送出加班申請失敗'))
-  }
 }
 
 const logout = async () => {
@@ -222,12 +118,9 @@ const logout = async () => {
   setAuthToken(null)
   localStorage.removeItem('hr_employee')
   employee.value = null
-  attendanceRecords.value = []
-  shiftSchedules.value = []
-  leaveRequests.value = []
-  overtimeRecords.value = []
-  activeTab.value = 'overview'
+  showMenu.value = false
   ElMessage.success('已登出')
+  router.push('/')
 }
 
 onMounted(async () => {
@@ -236,220 +129,405 @@ onMounted(async () => {
 
   try {
     await loadCurrentEmployee()
-    await loadPortalData()
   } catch (err) {
     setAuthToken(null)
     localStorage.removeItem('hr_employee')
     employee.value = null
   }
+
+  // 點擊外部關閉菜單
+  document.addEventListener('click', (e) => {
+    const userMenu = document.querySelector('.user-menu')
+    if (userMenu && !userMenu.contains(e.target)) {
+      showMenuDropdown.value = false
+    }
+  })
 })
 </script>
 
 <style scoped>
 .home-page {
   min-height: 100vh;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.hero-card,
-.portal-card {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 32px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
-}
-
-.portal-card {
-  padding: 28px 32px 32px;
-}
-
-.eyebrow {
-  margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #667eea;
-}
-
-.hero-card h1,
-.portal-header h2 {
-  margin: 0;
-  color: #111827;
-}
-
-.hero-card h1 {
-  font-size: 40px;
-  line-height: 1.1;
-}
-
-.portal-header h2 {
-  font-size: 24px;
-}
-
-.lead {
-  margin: 16px 0 28px;
-  font-size: 16px;
-  line-height: 1.7;
-  color: #4b5563;
-}
-
-.action-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.primary-link,
-.secondary-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: 999px;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.primary-link {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
-}
-
-.secondary-link {
-  border: 1px solid #d1d5db;
-  color: #1f2937;
   background: #fff;
 }
 
-.status-card {
-  margin-top: 24px;
-  padding: 16px 18px;
-  border-radius: 14px;
+/* 頂部導航欄 */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.menu-toggle {
+  display: none;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+}
+
+.menu-toggle span {
+  width: 22px;
+  height: 2.5px;
+  background: #333;
+  border-radius: 2px;
+}
+
+.logo {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.auth-menu .nav-link {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.auth-menu .nav-link:hover {
+  opacity: 0.9;
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+}
+
+.welcome-text {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.logout-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+/* 菜單按鈕 */
+.menu-icon-btn {
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.menu-icon-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.menu-icon-btn svg {
+  stroke: currentColor;
+}
+
+/* 下拉菜單 */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 200px;
+  z-index: 40;
+  overflow: hidden;
+}
+
+.dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  color: #374151;
+  height: auto;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  width: 100%;
+  text-align: left;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+
+.dropdown-link:hover {
   background: #f9fafb;
   color: #111827;
 }
 
-.portal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+.dropdown-link.logout-link {
+  color: #dc2626;
+  border-top: 1px solid #e5e7eb;
 }
 
-.portal-header p {
-  margin: 8px 0 0;
-  color: #9ca3af;
+.dropdown-link.logout-link:hover {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
-.info-tip {
-  margin-top: 14px;
+.dropdown-link .icon {
+  font-size: 16px;
+  min-width: 20px;
 }
 
-.section-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
+.dropdown-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 0;
 }
 
-.clock-buttons {
-  display: flex;
-  gap: 8px;
+/* 主容器 */
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0;
 }
 
-.inner-card {
-  margin-bottom: 14px;
+/* 英雄區段 */
+.hero {
+  padding: 80px 24px;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
 }
 
-.overtime-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.hero-content {
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-.hint-text {
-  margin: 2px 0 0;
-  color: #68758a;
+.eyebrow {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #667eea;
 }
 
-:deep(.el-card) {
-  border: none;
-  border-radius: 12px;
+.hero h2 {
+  margin: 0 0 16px;
+  font-size: 48px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
 }
 
-:deep(.el-tabs__header) {
-  border-bottom: 2px solid #f0f0f0;
-}
-
-:deep(.el-tabs__nav-wrap::after) {
-  background: linear-gradient(90deg, #667eea, #764ba2);
-  height: 3px;
-}
-
-:deep(.el-tab-pane) {
-  padding: 24px 0;
-}
-
-:deep(.el-form-item) {
-  margin-bottom: 18px;
-}
-
-:deep(.el-button) {
-  border-radius: 6px;
+.lead {
+  margin: 0 0 12px;
+  font-size: 18px;
+  color: #374151;
   font-weight: 500;
 }
 
-:deep(.el-button--primary) {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+.subtext {
+  margin: 0 0 32px;
+  font-size: 16px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 28px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s;
+  cursor: pointer;
   border: none;
+  font-size: 15px;
 }
 
-:deep(.el-button--primary:hover) {
+.btn-primary {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.btn-primary:hover {
   background: linear-gradient(135deg, #5568d3, #6b3c91);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
-@media (max-width: 900px) {
-  .home-page {
-    padding: 14px;
+.btn-secondary {
+  background: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+/* 功能卡片 */
+.features {
+  padding: 80px 24px;
+  background: white;
+}
+
+.features-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.feature-card {
+  padding: 32px 24px;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.feature-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.1);
+}
+
+.feature-icon {
+  font-size: 40px;
+  margin-bottom: 16px;
+}
+
+.feature-card h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #111827;
+  font-weight: 600;
+}
+
+.feature-card p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+/* 手機適配 */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 12px 16px;
   }
 
-  .hero-card,
-  .portal-card {
-    padding: 20px;
+  .menu-toggle {
+    display: flex;
   }
 
-  .hero-card h1 {
-    font-size: 30px;
+  .logo {
+    font-size: 18px;
   }
 
-  .portal-header {
+  .navbar-right {
+    gap: 12px;
+  }
+
+  .welcome-text {
+    display: none;
+  }
+
+  .hero {
+    padding: 60px 16px;
+  }
+
+  .hero h2 {
+    font-size: 32px;
+  }
+
+  .lead {
+    font-size: 16px;
+  }
+
+  .action-buttons {
     flex-direction: column;
-    align-items: stretch;
   }
 
-  .section-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .action-row {
-    flex-direction: column;
-  }
-
-  .primary-link,
-  .secondary-link {
+  .btn {
     width: 100%;
+  }
+
+  .features {
+    padding: 60px 16px;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .feature-card {
+    padding: 24px 16px;
   }
 }
 </style>
