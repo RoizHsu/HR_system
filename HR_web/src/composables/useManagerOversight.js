@@ -24,7 +24,7 @@ export function useManagerOversight() {
 
   const loadManagerPendingOvertimes = async () => {
     try {
-      const res = await api.get('employees/overtimes/pending-for-manager/')
+      const res = await api.get('employees/overtimes/pending-approvals/')
       managerPendingOvertimes.value = res.data
     } catch (err) {
       console.error('讀取待審核加班失敗:', err)
@@ -34,7 +34,7 @@ export function useManagerOversight() {
 
   const approveOvertime = async (overtimeId) => {
     try {
-      await api.patch(`employees/overtimes/${overtimeId}/`, { status: 'approved' })
+      await api.post(`employees/overtimes/${overtimeId}/approve/`)
       ElMessage.success('已核准加班申請')
       await loadManagerPendingOvertimes()
       return true
@@ -46,7 +46,7 @@ export function useManagerOversight() {
 
   const rejectOvertime = async (overtimeId) => {
     try {
-      await api.patch(`employees/overtimes/${overtimeId}/`, { status: 'rejected' })
+      await api.post(`employees/overtimes/${overtimeId}/reject/`)
       ElMessage.success('已拒絕加班申請')
       await loadManagerPendingOvertimes()
       return true

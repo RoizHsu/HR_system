@@ -96,6 +96,15 @@ class LeaveRequest(models.Model):
     end_date = models.DateField("結束日")
     reason = models.CharField("請假原因", max_length=255, blank=True, default='')
     status = models.CharField("審核狀態", max_length=20, choices=STATUS_CHOICES, default='pending')
+    approved_by = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_leave_requests',
+        verbose_name="核准主管",
+    )
+    approved_at = models.DateTimeField("核准時間", null=True, blank=True)
 
     class Meta:
         ordering = ['-start_date']

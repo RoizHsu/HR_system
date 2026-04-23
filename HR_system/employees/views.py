@@ -353,6 +353,57 @@ class LeaveRequestViewSet(BaseSelfServiceViewSet):
     queryset = LeaveRequest.objects.all()
     serializer_class = LeaveRequestSerializer
 
+    @action(detail=False, methods=['get'], url_path='pending-approvals')
+    def pending_approvals(self, request):
+        """查詢當前登入用戶作為主管的待審核請假"""
+        manager = get_current_employee(request)
+        if not manager:
+            return Response([], status=status.HTTP_200_OK)
+
+        pending = LeaveRequest.objects.filter(
+            employee__manager=manager,
+            status='pending'
+        ).order_by('-start_date')
+        return Response(LeaveRequestSerializer(pending, many=True).data)
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve(self, request, pk=None):
+        """核准請假"""
+        manager = get_current_employee(request)
+        if not manager:
+            return Response({'detail': '找不到主管資料'}, status=status.HTTP_404_NOT_FOUND)
+
+        leave = LeaveRequest.objects.filter(pk=pk, employee__manager=manager).first()
+        if not leave:
+            return Response({'detail': '找不到可審核的請假申請'}, status=status.HTTP_404_NOT_FOUND)
+        if leave.status != 'pending':
+            return Response({'detail': '此申請已處理'}, status=status.HTTP_400_BAD_REQUEST)
+
+        leave.status = 'approved'
+        leave.approved_by = manager
+        leave.approved_at = timezone.now()
+        leave.save(update_fields=['status', 'approved_by', 'approved_at'])
+        return Response(LeaveRequestSerializer(leave).data)
+
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject(self, request, pk=None):
+        """拒絕請假"""
+        manager = get_current_employee(request)
+        if not manager:
+            return Response({'detail': '找不到主管資料'}, status=status.HTTP_404_NOT_FOUND)
+
+        leave = LeaveRequest.objects.filter(pk=pk, employee__manager=manager).first()
+        if not leave:
+            return Response({'detail': '找不到可審核的請假申請'}, status=status.HTTP_404_NOT_FOUND)
+        if leave.status != 'pending':
+            return Response({'detail': '此申請已處理'}, status=status.HTTP_400_BAD_REQUEST)
+
+        leave.status = 'rejected'
+        leave.approved_by = manager
+        leave.approved_at = timezone.now()
+        leave.save(update_fields=['status', 'approved_by', 'approved_at'])
+        return Response(LeaveRequestSerializer(leave).data)
+
 
 class OvertimeRecordViewSet(BaseSelfServiceViewSet):
     queryset = OvertimeRecord.objects.all()
