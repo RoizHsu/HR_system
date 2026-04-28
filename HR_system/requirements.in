@@ -1,0 +1,18 @@
+# Django & REST Framework
+Django>=5.0,<6.0
+djangorestframework>=3.14.0
+django-cors-headers>=4.0.0
+
+# Authentication & Tokens
+djangorestframework-simplejwt>=5.0.0
+
+# Database
+# SQLite 是預設的，不需要額外安裝
+
+# 工具和輔助
+django-appconf>=1.0.0
+django-select2>=8.0.0
+pytz>=2021.3
+
+# 開發相關（可選）
+# 這些行會被 pip-compile 忽略
