@@ -1,0 +1,14 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN rm -rf node_modules package-lock.json && npm install
+
+COPY . .
+
+CMD ["npm", "run", "dev"]
+
+
+
+

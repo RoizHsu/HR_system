@@ -1,0 +1,24 @@
+# vue
+FROM node:14-alpine AS build-stage
+WORKDIR /app/build
+#複製HR_web裡的package.json和package-lock.json到/app/build裡面
+COPY HR_web/package*.json ./
+RUN npm install
+COPY HR_web/src ./src
+RUN npm run build
+# django
+FROM python:3.8-slim
+LABEL maintainer="roiz <qqa123456408@gmail.com>"
+LABEL version="1.0"
+LABEL description="測試並學習dockerfile"
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY HR_system/requirements.txt .
+RUN pip install -r requirements.txt
+#把整個HR資料夾裡的東西都COPY到/app裡面
+COPY HR/ .
+
+
+CMD [ "python","manage.py","runserver" ]

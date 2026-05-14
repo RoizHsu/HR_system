@@ -1,0 +1,25 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./dockerfile.backend
+    image: hr-django-backend:v3  #簡單本地名稱
+    container_name: hr-backend 
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./HR_system:/app
+    environment:
+      - DEBUG=1
+
+  frontend:
+    build:
+      context: ./HR_web
+      dockerfile: dockerfile.frontend
+    image: hr-vue-frontend:v3   #簡單本地名稱
+    container_name: hr-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./HR_web:/app
+      - /app/node_modules

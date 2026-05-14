@@ -1,0 +1,16 @@
+# django
+FROM python:3.11-slim
+LABEL maintainer="roiz <qqa123456408@gmail.com>"
+LABEL version="1.0"
+LABEL description="測試並學習dockerfile"
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY HR_system/requirements.txt .
+RUN pip install -r requirements.txt
+# 複製後端代碼
+COPY HR_system/ .
+
+
+CMD [ "python","manage.py","runserver","0.0.0.0:8000"]
