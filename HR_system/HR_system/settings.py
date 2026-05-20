@@ -79,8 +79,15 @@ WSGI_APPLICATION = 'HR_system.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'mssql',
+        'NAME': 'HR_DB',
+        'USER': 'sa',
+        'PASSWORD': 'SQLServer123!',
+        'HOST': 'sqlserver',
+        'PORT': '1433',
+        'OPTIONS': {
+            'extra_params': 'TrustServerCertificate=yes;Encrypt=no',
+        }
     }
 }
 
